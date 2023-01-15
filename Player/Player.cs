@@ -2,6 +2,7 @@ using Godot;
 using System;
 
 public class Player : KinematicBody2D {
+	public static readonly long BlockHeight = 2;
 	/// <summary>How quickly the player's <see cref="Velocity"> gets up to <see cref="MaxSpeed"></summary>
 	[Export]
 	public float Acceleration = 500;

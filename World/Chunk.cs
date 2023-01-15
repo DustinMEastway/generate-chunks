@@ -12,9 +12,9 @@ public interface ChunkData {
 
 public class Chunk : Node2D {
 	public static readonly PackedScene BlockScene = ResourceLoader.Load<PackedScene>("res://World/Blocks/Block.tscn");
-	public const long ChunkBlockHeight = 32;
+	public static readonly long ChunkBlockHeight = 1024;
 	public static readonly long ChunkBlockWidth = 64;
-	public static readonly long DefaultGroundLevel = 18;
+	public static readonly long DefaultGroundLevel = 768;
 	[Export]
 	public BiomeId BiomeId = BiomeId.Forest;
 	public Block[][] Blocks = null;
@@ -52,8 +52,6 @@ public class Chunk : Node2D {
 
 	private void _RenderBlocks() {
 		Blocks = Blocks ?? _GenerateBlocks();
-		long baseY = Block.Height * Chunk.ChunkBlockHeight;
-
 		for (long columnI = 0; columnI < Blocks.Length; ++columnI) {
 			var column = Blocks[columnI];
 			for (long blockI = 0; blockI < column.Length; ++blockI) {
@@ -62,7 +60,8 @@ public class Chunk : Node2D {
 				block.Color = blockData.Color;
 				block.Position = new Vector2(
 					columnI * Block.Width,
-					baseY - blockI * Block.Height
+					// Height minus 1 since we position blocks by their top left corner.
+					(Chunk.ChunkBlockHeight - 1 - blockI) * Block.Height
 				);
 				AddChild(block);
 			}
