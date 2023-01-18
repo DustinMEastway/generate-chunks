@@ -13,12 +13,11 @@ public class Player : KinematicBody2D {
 
 	/// <summary>How quickly the player's <see cref="Velocity"> slows down to 0.</summary>
 	public float Friction {
-	get => Acceleration;
+		get => Acceleration;
 	}
 
 	// Called when the node enters the scene tree for the first time.
-	public override void _Ready()
-	{
+	public override void _Ready() {
 	}
 
 	/// <summary>Current distance per second the player is travelling at.</summary>
@@ -26,7 +25,7 @@ public class Player : KinematicBody2D {
 
 	/// <inheritdoc />
 	public override void _PhysicsProcess(float delta) {
-	StateMove(delta);
+		StateMove(delta);
 	}
 
 	private void StateMove(float delta) {
