@@ -39,9 +39,9 @@ public class Chunk : Node2D {
 	private int[][] _TerrainGeneration(int[][] map, long width, long height) {
 		int noiseHeight;
 		for (int x = 0; x < width; x++) {
-			noiseHeight = Mathf.RoundToInt(Noise.GetNoise2d((x / Smoothness), Seed) * (height));
+			noiseHeight = Mathf.RoundToInt(Noise.GetNoise2d((x / Smoothness), Seed) * (height * 2));
 			// noiseHeight += Mathf.RoundToInt(height / 2);
-			for (int y = 0; y < noiseHeight; y++) {
+			for (int y = 0; (y < height && y < noiseHeight); y++) {
 				map[x][y] = 1;
 			}
 		}
@@ -59,7 +59,7 @@ public class Chunk : Node2D {
 
 		// generate ground layer
 		int[][] groundMap = _GenerateArray(width, height / 2, true);
-		groundMap = _TerrainGeneration(groundMap, width, height);
+		groundMap = _TerrainGeneration(groundMap, width, height / 2);
 
 		// stack layers
 		map = new int[undergroundMap.Length][];
@@ -75,6 +75,7 @@ public class Chunk : Node2D {
 		for (int x = 0; x < width; x++) {
 			for (int y = 0; y < map[x].Length; y++) {
 				Block block = null;
+				float noise = Noise.GetNoise2d(x, y);
 				int lastIndex = Array.FindLastIndex(map[x], i => i == 1);
 
 				// render underground layer
@@ -82,7 +83,7 @@ public class Chunk : Node2D {
 					if (lastIndex == y) {
 						block = new Grass();
 					} else {
-						var noise = Noise.GetNoise2d(x, y);
+
 						if (noise < -0.1) {
 							block = new Stone();
 						} else {
@@ -93,6 +94,8 @@ public class Chunk : Node2D {
 				} else if (map[x][y] == 1) {
 					if (lastIndex == y) {
 						block = new Grass();
+					} else if (noise < -0.1) {
+						block = new Stone();
 					} else {
 						block = new Dirt();
 					}
