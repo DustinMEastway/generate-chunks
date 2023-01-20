@@ -1,83 +1,114 @@
 using Godot;
 using System;
 
-public enum BiomeId {
-	Forest = 1
-}
-
-public interface ChunkData {
-	BiomeId BiomeId { get; set; }
-	Block[][] Blocks { get; set; }
-}
-
-public class Chunk : Node2D {
-	public static readonly PackedScene BlockScene = ResourceLoader.Load<PackedScene>("res://World/Blocks/Block.tscn");
-	public static readonly long ChunkBlockHeight = 1024;
-	public static readonly long ChunkBlockWidth = 64;
-	public static readonly long DefaultGroundLevel = 768;
-	[Export]
-	public BiomeId BiomeId = BiomeId.Forest;
-	public Block[][] Blocks = null;
-	[Export(PropertyHint.Range, "0,1024,1")]
-	public long GroundLeft = -1;
-	[Export(PropertyHint.Range, "0,1024,1")]
-	public long GroundRight = -1;
-	public OpenSimplexNoise Noise = new OpenSimplexNoise();
-	public int Seed = new Random().Next();
+public class Chunk : Node2D
+{
+  public static Random Ran = new Random();
+  public static readonly PackedScene BlockScene = ResourceLoader.Load<PackedScene>("res://World/Blocks/Block.tscn");
+  public static readonly long ChunkBlockHeight = 64;
+  public static readonly long ChunkBlockWidth = 64;
+  public static readonly long DefaultGroundLevel = 32;
+  public OpenSimplexNoise Noise = new OpenSimplexNoise();
+  public int Seed = Ran.Next();
+  public float Smoothness = 4;
 
 	public override void _Ready() {
 		_GenerateNoise();
 		_RenderBlocks();
 	}
 
-	private void _GenerateNoise() {
-		Noise.Seed = Seed;
-		Noise.Octaves = 4;
-		Noise.Period = 20.0f;
-		Noise.Persistence = 0.8f;
-	}
+  private void _GenerateNoise()
+  {
+    Seed = Ran.Next();
+    Noise.Seed = Seed;
+    Noise.Octaves = 4;
+    Noise.Period = 20.0f;
+    Noise.Persistence = 0.8f;
+  }
 
-	private Block[][] _GenerateBlocks() {
-		var blocks = new Block[Chunk.ChunkBlockWidth][];
-		var groundLevel = (GroundLeft >= 0) ? GroundLeft : Chunk.DefaultGroundLevel;
-		for (long columnI = 0; columnI < blocks.Length; ++columnI) {
-			var column = new Block[groundLevel];
-			for (long blockI = 0; blockI < column.Length; ++blockI) {
-				Block block = null;
-				if (blockI < groundLevel - 1) {
-					var noise = Noise.GetNoise2d(columnI, blockI);
-					if (noise < -0.1) {
-						block = new Stone();
-					} else {
-						block = new Dirt();
-					}
-				} else {
-					block = new Grass();
-				}
+  private int[,] _GenerateArray(long width, long height, bool empty)
+  {
+    int[,] map = new int[Chunk.ChunkBlockWidth, Chunk.ChunkBlockHeight];
+    for (int x = 0; x < width; x++)
+    {
+      for (int y = 0; y < height; y++)
+      {
+        map[x, y] = empty ? 0 : 1;
+      }
+    }
 
-				column[blockI] = block;
-			}
-			blocks[columnI] = column;
-		}
+    return map;
+  }
 
-		return blocks;
-	}
+  private int[,] _TerrainGeneration(int[,] map, long width, long height)
+  {
+    int noiseHeight;
+    for (int x = 0; x < width; x++)
+    {
+      noiseHeight = Mathf.RoundToInt(Noise.GetNoise2d((x / Smoothness), Seed) * (height / 2));
+      noiseHeight += Mathf.RoundToInt(height / 2);
+      for (int y = 0; y < noiseHeight; y++)
+      {
+        map[x, y] = 1;
+      }
+    }
 
-	private void _RenderBlocks() {
-		Blocks = Blocks ?? _GenerateBlocks();
-		for (long columnI = 0; columnI < Blocks.Length; ++columnI) {
-			var column = Blocks[columnI];
-			for (long blockI = 0; blockI < column.Length; ++blockI) {
-				var blockData = column[blockI];
-				var block = Chunk.BlockScene.Instance<Block>();
-				block.Color = blockData.Color;
-				block.Position = new Vector2(
-					columnI * Block.Width,
-					// Height minus 1 since we position blocks by their top left corner.
-					(Chunk.ChunkBlockHeight - 1 - blockI) * Block.Height
-				);
-				AddChild(block);
-			}
-		}
-	}
+    return map;
+  }
+
+  private void _RenderBlocks()
+  {
+    long width = Chunk.ChunkBlockWidth;
+    long height = Chunk.DefaultGroundLevel;
+    int[,] map = _GenerateArray(width, height, true);
+    map = _TerrainGeneration(map, width, height);
+    for (int x = 0; x < width; x++)
+    {
+      for (int y = 0; y < height; y++)
+      {
+        if (map[x, y] == 1)
+        {
+          Block block;
+          if (y == Ran.Next(0, Mathf.RoundToInt(height - 1)))
+          {
+            block = new Stone();
+          }
+          else
+          {
+            block = new Dirt();
+          }
+          var blockInstance = Chunk.BlockScene.Instance<Block>();
+          blockInstance.Color = block.Color;
+          blockInstance.Position = new Vector2(
+            x * Block.Width,
+            // Height minus 1 since we position blocks by their top left corner.
+            (Chunk.ChunkBlockHeight - 1 - y) * Block.Height
+          );
+          AddChild(blockInstance);
+        }
+      }
+    }
+  }
+
+  public override void _UnhandledInput(InputEvent @event)
+  {
+    base._UnhandledInput(@event);
+    if (@event is InputEventKey eventKey)
+    {
+      if (eventKey.Pressed && eventKey.Scancode == (int)KeyList.Space)
+      {
+        this._RemoveAllChildNodes();
+        this._GenerateNoise();
+        this._RenderBlocks();
+      }
+    }
+  }
+
+  private void _RemoveAllChildNodes()
+  {
+    foreach (Block block in this.GetChildren())
+    {
+      block.QueueFree();
+    }
+  }
 }
