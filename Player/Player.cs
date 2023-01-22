@@ -8,7 +8,7 @@ public class Player : KinematicBody2D {
 	public float Acceleration = 500;
 	/// <summary>Max distance per second the player can travel at.</summary>
 	[Export]
-	public float MaxSpeed = 500;
+	public float MaxSpeed = 80;
 	private Vector2 _InputDirection = Vector2.Zero;
 
 	/// <summary>How quickly the player's <see cref="Velocity"> slows down to 0.</summary>
@@ -31,7 +31,7 @@ public class Player : KinematicBody2D {
 	private void StateMove(float delta) {
 		_InputDirection = new Vector2(
 			Input.GetActionStrength("ui_right") - Input.GetActionStrength("ui_left"),
-			Input.GetActionStrength("ui_down") - Input.GetActionStrength("ui_up")
+			0
 		).Normalized();
 
 		if (_InputDirection != Vector2.Zero) {
