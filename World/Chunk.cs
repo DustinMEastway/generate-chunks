@@ -26,10 +26,10 @@ public class Chunk : Node2D {
 
 	private int[][] _GenerateArray(long width, long height, bool empty) {
 		int[][] map = new int[width][];
-		for (int x = 0; x < width; x++) {
-			map[x] = new int[height];
-			for (int y = 0; y < height; y++) {
-				map[x][y] = empty ? 0 : 1;
+		for (int columnI = 0; columnI < width; columnI++) {
+			map[columnI] = new int[height];
+			for (int blockI = 0; blockI < height; blockI++) {
+				map[columnI][blockI] = empty ? 0 : 1;
 			}
 		}
 
@@ -38,11 +38,11 @@ public class Chunk : Node2D {
 
 	private int[][] _TerrainGeneration(int[][] map, long width, long height) {
 		int noiseHeight;
-		for (int x = 0; x < width; x++) {
-			noiseHeight = Mathf.RoundToInt(Noise.GetNoise2d((x / Smoothness), Seed) * (height * 2));
+		for (int columnI = 0; columnI < width; columnI++) {
+			noiseHeight = Mathf.RoundToInt(Noise.GetNoise2d((columnI / Smoothness), Seed) * (height * 2));
 			// noiseHeight += Mathf.RoundToInt(height / 2);
-			for (int y = 0; (y < height && y < noiseHeight); y++) {
-				map[x][y] = 1;
+			for (int blockI = 0; (blockI < height && blockI < noiseHeight); blockI++) {
+				map[columnI][blockI] = 1;
 			}
 		}
 
@@ -51,48 +51,34 @@ public class Chunk : Node2D {
 
 	private void _RenderBlocks() {
 		long width = Chunk.ChunkBlockWidth;
-		long height = Chunk.DefaultGroundLevel;
+		long height = Chunk.DefaultGroundLevel / 2;
 		int[][] map;
 
 		// generate underground layer
-		int[][] undergroundMap = _GenerateArray(width, height / 2, false);
+		int[][] undergroundMap = _GenerateArray(width, height, false);
 
 		// generate ground layer
-		int[][] groundMap = _GenerateArray(width, height / 2, true);
-		groundMap = _TerrainGeneration(groundMap, width, height / 2);
+		int[][] groundMap = _GenerateArray(width, height, true);
+		groundMap = _TerrainGeneration(groundMap, width, height);
 
 		// stack layers
 		map = new int[undergroundMap.Length][];
 		undergroundMap.CopyTo(map, 0);
-		for (int columnId = 0; columnId < groundMap.Length; columnId++) {
-			int[] newColumn = new int[map[columnId].Length + groundMap[columnId].Length];
-			map[columnId].CopyTo(newColumn, 0);
-			groundMap[columnId].CopyTo(newColumn, undergroundMap[columnId].Length);
-			map[columnId] = newColumn;
+		for (int columnI = 0; columnI < groundMap.Length; columnI++) {
+			int[] newColumn = new int[map[columnI].Length + groundMap[columnI].Length];
+			map[columnI].CopyTo(newColumn, 0);
+			groundMap[columnI].CopyTo(newColumn, undergroundMap[columnI].Length);
+			map[columnI] = newColumn;
 		}
 
-		long undergroundHeight = height / 2;
-		for (int x = 0; x < width; x++) {
-			for (int y = 0; y < map[x].Length; y++) {
+		for (int columnI = 0; columnI < width; columnI++) {
+			for (int blockI = 0; blockI < map[columnI].Length; blockI++) {
 				Block block = null;
-				float noise = Noise.GetNoise2d(x, y);
-				int lastIndex = Array.FindLastIndex(map[x], i => i == 1);
+				float noise = Noise.GetNoise2d(columnI, blockI);
+				int lastIndex = Array.FindLastIndex(map[columnI], i => i == 1);
 
-				// render underground layer
-				if (y < undergroundHeight) {
-					if (lastIndex == y) {
-						block = new Grass();
-					} else {
-
-						if (noise < -0.1) {
-							block = new Stone();
-						} else {
-							block = new Dirt();
-						}
-					}
-					// render ground layer
-				} else if (map[x][y] == 1) {
-					if (lastIndex == y) {
+				if (blockI < height || map[columnI][blockI] == 1) {
+					if (lastIndex == blockI) {
 						block = new Grass();
 					} else if (noise < -0.1) {
 						block = new Stone();
@@ -105,9 +91,9 @@ public class Chunk : Node2D {
 					var blockInstance = Chunk.BlockScene.Instance<Block>();
 					blockInstance.Color = block.Color;
 					blockInstance.Position = new Vector2(
-						x * Block.Width,
+						columnI * Block.Width,
 						// Height minus 1 since we position blocks by their top left corner.
-						(Chunk.ChunkBlockHeight - 1 - y) * Block.Height
+						(Chunk.ChunkBlockHeight - 1 - blockI) * Block.Height
 					);
 					AddChild(blockInstance);
 				}
