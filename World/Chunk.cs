@@ -22,9 +22,19 @@ public class Chunk : Node2D {
 	public long GroundLeft = -1;
 	[Export(PropertyHint.Range, "0,1024,1")]
 	public long GroundRight = -1;
+	public OpenSimplexNoise Noise = new OpenSimplexNoise();
+	public int Seed = new Random().Next();
 
 	public override void _Ready() {
+		_GenerateNoise();
 		_RenderBlocks();
+	}
+
+	private void _GenerateNoise() {
+		Noise.Seed = Seed;
+		Noise.Octaves = 4;
+		Noise.Period = 20.0f;
+		Noise.Persistence = 0.8f;
 	}
 
 	private Block[][] _GenerateBlocks() {
@@ -34,10 +44,13 @@ public class Chunk : Node2D {
 			var column = new Block[groundLevel];
 			for (long blockI = 0; blockI < column.Length; ++blockI) {
 				Block block = null;
-				if (blockI < groundLevel - 3) {
-					block = new Stone();
-				} else if (blockI < groundLevel - 1) {
-					block = new Dirt();
+				if (blockI < groundLevel - 1) {
+					var noise = Noise.GetNoise2d(columnI, blockI);
+					if (noise < -0.1) {
+						block = new Stone();
+					} else {
+						block = new Dirt();
+					}
 				} else {
 					block = new Grass();
 				}
