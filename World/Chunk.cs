@@ -1,29 +1,15 @@
 using Godot;
 using System;
 
-public enum BiomeId {
-	Forest = 1
-}
-
-public interface ChunkData {
-	BiomeId BiomeId { get; set; }
-	Block[][] Blocks { get; set; }
-}
-
 public class Chunk : Node2D {
+	public static Random Ran = new Random();
 	public static readonly PackedScene BlockScene = ResourceLoader.Load<PackedScene>("res://World/Blocks/Block.tscn");
-	public static readonly long ChunkBlockHeight = 1024;
+	public static readonly long ChunkBlockHeight = 64;
 	public static readonly long ChunkBlockWidth = 64;
-	public static readonly long DefaultGroundLevel = 768;
-	[Export]
-	public BiomeId BiomeId = BiomeId.Forest;
-	public Block[][] Blocks = null;
-	[Export(PropertyHint.Range, "0,1024,1")]
-	public long GroundLeft = -1;
-	[Export(PropertyHint.Range, "0,1024,1")]
-	public long GroundRight = -1;
+	public static readonly long DefaultGroundLevel = 32;
 	public OpenSimplexNoise Noise = new OpenSimplexNoise();
-	public int Seed = new Random().Next();
+	public int Seed = Ran.Next();
+	public float Smoothness = 4;
 
 	public override void _Ready() {
 		_GenerateNoise();
@@ -31,53 +17,59 @@ public class Chunk : Node2D {
 	}
 
 	private void _GenerateNoise() {
+		Seed = Ran.Next();
 		Noise.Seed = Seed;
 		Noise.Octaves = 4;
 		Noise.Period = 20.0f;
 		Noise.Persistence = 0.8f;
 	}
 
-	private Block[][] _GenerateBlocks() {
-		var blocks = new Block[Chunk.ChunkBlockWidth][];
-		var groundLevel = (GroundLeft >= 0) ? GroundLeft : Chunk.DefaultGroundLevel;
-		for (long columnI = 0; columnI < blocks.Length; ++columnI) {
-			var column = new Block[groundLevel];
-			for (long blockI = 0; blockI < column.Length; ++blockI) {
+	private void _RenderBlocks() {
+		for (var columnI = 0; columnI < Chunk.ChunkBlockWidth; columnI++) {
+			var groundLevel = Chunk.DefaultGroundLevel + Mathf.RoundToInt(
+				Noise.GetNoise2d((columnI / Smoothness), Seed) * Chunk.DefaultGroundLevel
+			);
+
+			for (var blockI = 0; blockI < groundLevel; blockI++) {
 				Block block = null;
-				if (blockI < groundLevel - 1) {
-					var noise = Noise.GetNoise2d(columnI, blockI);
-					if (noise < -0.1) {
-						block = new Stone();
-					} else {
-						block = new Dirt();
-					}
-				} else {
+				var noise = Noise.GetNoise2d(columnI, blockI);
+
+				if (blockI == groundLevel - 1) {
 					block = new Grass();
+				} else if (noise < -0.1) {
+					block = new Stone();
+				} else {
+					block = new Dirt();
 				}
 
-				column[blockI] = block;
+				if (block != null) {
+					var blockInstance = Chunk.BlockScene.Instance<Block>();
+					blockInstance.Color = block.Color;
+					blockInstance.Position = new Vector2(
+						columnI * Block.Width,
+						// Height minus 1 since we position blocks by their top left corner.
+						(Chunk.ChunkBlockHeight - 1 - blockI) * Block.Height
+					);
+					AddChild(blockInstance);
+				}
 			}
-			blocks[columnI] = column;
 		}
-
-		return blocks;
 	}
 
-	private void _RenderBlocks() {
-		Blocks = Blocks ?? _GenerateBlocks();
-		for (long columnI = 0; columnI < Blocks.Length; ++columnI) {
-			var column = Blocks[columnI];
-			for (long blockI = 0; blockI < column.Length; ++blockI) {
-				var blockData = column[blockI];
-				var block = Chunk.BlockScene.Instance<Block>();
-				block.Color = blockData.Color;
-				block.Position = new Vector2(
-					columnI * Block.Width,
-					// Height minus 1 since we position blocks by their top left corner.
-					(Chunk.ChunkBlockHeight - 1 - blockI) * Block.Height
-				);
-				AddChild(block);
+	public override void _UnhandledInput(InputEvent @event) {
+		base._UnhandledInput(@event);
+		if (@event is InputEventKey eventKey) {
+			if (eventKey.Pressed && eventKey.Scancode == (int)KeyList.Space) {
+				this._RemoveAllChildNodes();
+				this._GenerateNoise();
+				this._RenderBlocks();
 			}
+		}
+	}
+
+	private void _RemoveAllChildNodes() {
+		foreach (Block block in this.GetChildren()) {
+			block.QueueFree();
 		}
 	}
 }

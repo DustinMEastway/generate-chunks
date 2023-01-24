@@ -8,7 +8,7 @@ public class World : Node2D {
 	private Player _Player = null;
 	private Vector2 _SpawnPoint = new Vector2(
 		(Chunk.ChunkBlockWidth / 2) * Block.Width,
-		(Chunk.ChunkBlockHeight - Chunk.DefaultGroundLevel - Player.BlockHeight) * Block.Height
+		(Chunk.ChunkBlockHeight / 4) * Block.Height
 	);
 
 	public override void _Ready() {
