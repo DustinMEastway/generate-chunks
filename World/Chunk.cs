@@ -35,11 +35,11 @@ public class Chunk : Node2D {
 			var groundLevel = (int)Chunk.DefaultGroundLevel + Mathf.RoundToInt(
 				Noise.GetNoise2d((columnI / Smoothness), Seed) * Chunk.DefaultGroundLevel
 			);
-
-			for (var blockI = groundLevel; blockI > 0; blockI--) {
+			groundLevel = (groundLevel - (groundLevel * 2));
+			for (var blockI = 0; blockI > groundLevel; blockI--) {
 				var noise = Noise.GetNoise2d(columnI, blockI);
 
-				if (blockI == -1) {
+				if (blockI == groundLevel + 1) {
 					TileMap.SetCell(columnI, blockI, grassTileId);
 				} else if (noise < -0.1) {
 					TileMap.SetCell(columnI, blockI, stoneTileId);
