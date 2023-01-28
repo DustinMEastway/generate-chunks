@@ -10,8 +10,10 @@ public class Chunk : Node2D {
 	public OpenSimplexNoise Noise = new OpenSimplexNoise();
 	public int Seed = Ran.Next();
 	public float Smoothness = 4;
+	public TileMap TileMap;
 
 	public override void _Ready() {
+		TileMap = GetNode<TileMap>("TileMap");
 		_GenerateNoise();
 		_RenderBlocks();
 	}
@@ -25,32 +27,24 @@ public class Chunk : Node2D {
 	}
 
 	private void _RenderBlocks() {
+		int dirtTileId = TileMap.TileSet.FindTileByName("dirt");
+		int grassTileId = TileMap.TileSet.FindTileByName("grass");
+		int stoneTileId = TileMap.TileSet.FindTileByName("stone");
+
 		for (var columnI = 0; columnI < Chunk.ChunkBlockWidth; columnI++) {
-			var groundLevel = Chunk.DefaultGroundLevel + Mathf.RoundToInt(
+			var groundLevel = (int)Chunk.DefaultGroundLevel + Mathf.RoundToInt(
 				Noise.GetNoise2d((columnI / Smoothness), Seed) * Chunk.DefaultGroundLevel
 			);
 
-			for (var blockI = 0; blockI < groundLevel; blockI++) {
-				Block block = null;
+			for (var blockI = groundLevel; blockI > 0; blockI--) {
 				var noise = Noise.GetNoise2d(columnI, blockI);
 
-				if (blockI == groundLevel - 1) {
-					block = new Grass();
+				if (blockI == -1) {
+					TileMap.SetCell(columnI, blockI, grassTileId);
 				} else if (noise < -0.1) {
-					block = new Stone();
+					TileMap.SetCell(columnI, blockI, stoneTileId);
 				} else {
-					block = new Dirt();
-				}
-
-				if (block != null) {
-					var blockInstance = Chunk.BlockScene.Instance<Block>();
-					blockInstance.Color = block.Color;
-					blockInstance.Position = new Vector2(
-						columnI * Block.Width,
-						// Height minus 1 since we position blocks by their top left corner.
-						(Chunk.ChunkBlockHeight - 1 - blockI) * Block.Height
-					);
-					AddChild(blockInstance);
+					TileMap.SetCell(columnI, blockI, dirtTileId);
 				}
 			}
 		}
@@ -60,16 +54,10 @@ public class Chunk : Node2D {
 		base._UnhandledInput(@event);
 		if (@event is InputEventKey eventKey) {
 			if (eventKey.Pressed && eventKey.Scancode == (int)KeyList.Space) {
-				this._RemoveAllChildNodes();
+				TileMap.Clear();
 				this._GenerateNoise();
 				this._RenderBlocks();
 			}
-		}
-	}
-
-	private void _RemoveAllChildNodes() {
-		foreach (Block block in this.GetChildren()) {
-			block.QueueFree();
 		}
 	}
 }
