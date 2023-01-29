@@ -1,6 +1,28 @@
 using Godot;
 using System;
 
+public class BlockId {
+	public int Dirt = -1;
+	public int Grass = -1;
+	public int Stone = -1;
+
+	public BlockId(
+		TileMap tileMap
+	) {
+		Dirt = _GetByName(tileMap, "dirt");
+		Grass = _GetByName(tileMap, "grass");
+		Stone = _GetByName(tileMap, "stone");
+	}
+
+	private int _GetByName(TileMap tileMap, string name) {
+		int id = tileMap.TileSet.FindTileByName(name);
+		if (id == -1) {
+			throw new Exception($"TileMap does not contain tile with name '{name}'.");
+		}
+		return id;
+	}
+}
+
 public class Chunk : Node2D {
 	public static Random Ran = new Random();
 	public static readonly int BlockHeight = 6;
@@ -12,9 +34,11 @@ public class Chunk : Node2D {
 	public int Seed = Ran.Next();
 	public float Smoothness = 4;
 	public TileMap TileMap;
+	private BlockId _BlockId;
 
 	public override void _Ready() {
 		TileMap = GetNode<TileMap>("TileMap");
+		_BlockId = new BlockId(TileMap);
 		_GenerateNoise();
 		_RenderBlocks();
 	}
@@ -28,27 +52,38 @@ public class Chunk : Node2D {
 	}
 
 	private void _RenderBlocks() {
-		int dirtTileId = TileMap.TileSet.FindTileByName("dirt");
-		int grassTileId = TileMap.TileSet.FindTileByName("grass");
-		int stoneTileId = TileMap.TileSet.FindTileByName("stone");
-
 		for (var columnI = 0; columnI < Chunk.ChunkBlockWidth; columnI++) {
-			var groundLevel = (int)Chunk.DefaultGroundLevel + Mathf.RoundToInt(
+			var groundLevel = Chunk.DefaultGroundLevel + Mathf.RoundToInt(
 				Noise.GetNoise2d((columnI / Smoothness), Seed) * Chunk.DefaultGroundLevel
 			);
 
 			for (var blockI = 0; blockI < groundLevel; blockI++) {
-				var noise = Noise.GetNoise2d(columnI, blockI);
-
-				if (blockI == groundLevel - 1) {
-					TileMap.SetCell(columnI, blockI, grassTileId);
-				} else if (noise < -0.1) {
-					TileMap.SetCell(columnI, blockI, stoneTileId);
-				} else {
-					TileMap.SetCell(columnI, blockI, dirtTileId);
-				}
+				var x = columnI;
+				var y = Chunk.ChunkBlockHeight - blockI - 1;
+				TileMap.SetCell(
+					x,
+					y,
+					_GetCellId(columnI, blockI, groundLevel)
+				);
 			}
 		}
+	}
+
+	private int _GetCellId(
+		int columnI,
+		int blockI,
+		int groundLevel
+	) {
+		if (blockI == groundLevel - 1) {
+			return _BlockId.Grass;
+		}
+
+		var noise = Noise.GetNoise2d(columnI, blockI);
+		if (noise < -0.1) {
+			return _BlockId.Stone;
+		}
+
+		return _BlockId.Dirt;
 	}
 
 	public override void _UnhandledInput(InputEvent @event) {
