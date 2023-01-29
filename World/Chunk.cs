@@ -3,10 +3,11 @@ using System;
 
 public class Chunk : Node2D {
 	public static Random Ran = new Random();
-	public static readonly PackedScene BlockScene = ResourceLoader.Load<PackedScene>("res://World/Blocks/Block.tscn");
-	public static readonly long ChunkBlockHeight = 64;
-	public static readonly long ChunkBlockWidth = 64;
-	public static readonly long DefaultGroundLevel = 32;
+	public static readonly int BlockHeight = 6;
+	public static readonly int BlockWidth = 6;
+	public static readonly int ChunkBlockHeight = 64;
+	public static readonly int ChunkBlockWidth = 64;
+	public static readonly int DefaultGroundLevel = 32;
 	public OpenSimplexNoise Noise = new OpenSimplexNoise();
 	public int Seed = Ran.Next();
 	public float Smoothness = 4;
@@ -36,10 +37,10 @@ public class Chunk : Node2D {
 				Noise.GetNoise2d((columnI / Smoothness), Seed) * Chunk.DefaultGroundLevel
 			);
 
-			for (var blockI = groundLevel; blockI > 0; blockI--) {
+			for (var blockI = 0; blockI < groundLevel; blockI++) {
 				var noise = Noise.GetNoise2d(columnI, blockI);
 
-				if (blockI == -1) {
+				if (blockI == groundLevel - 1) {
 					TileMap.SetCell(columnI, blockI, grassTileId);
 				} else if (noise < -0.1) {
 					TileMap.SetCell(columnI, blockI, stoneTileId);
