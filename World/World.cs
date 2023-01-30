@@ -7,8 +7,8 @@ public class World : Node2D {
 	private Camera2D _Camera;
 	private Player _Player = null;
 	private Vector2 _SpawnPoint = new Vector2(
-		(Chunk.ChunkBlockWidth / 2) * Block.Width,
-		(Chunk.ChunkBlockHeight / 4) * Block.Height
+		(Chunk.ChunkBlockWidth / 2) * Chunk.BlockWidth,
+		(Chunk.ChunkBlockHeight / 4) * Chunk.BlockHeight
 	);
 
 	public override void _Ready() {
