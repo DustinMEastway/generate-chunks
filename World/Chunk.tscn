@@ -86,3 +86,4 @@ script = ExtResource( 1 )
 tile_set = SubResource( 1 )
 cell_size = Vector2( 6, 6 )
 format = 1
+tile_data = PoolIntArray( 3997604, 1, 0 )

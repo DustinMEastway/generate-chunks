@@ -3,7 +3,7 @@ using System;
 
 public class Camera : Camera2D {
 	public override void _Ready() {
-		LimitBottom = (int)(Block.Height * Chunk.ChunkBlockHeight);
+		LimitBottom = Chunk.BlockHeight * Chunk.ChunkBlockHeight;
 		LimitTop = 0;
 	}
 }
