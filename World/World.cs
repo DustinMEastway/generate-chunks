@@ -9,7 +9,7 @@ public class World : Node2D {
 	public static readonly PackedScene PlayerScene = ResourceLoader.Load<PackedScene>("res://Player/Player.tscn");
 	public static readonly Random Random = new Random();
 	public static int Seed { get; private set; } = Random.Next();
-	public static int WorldChunkWidth = 3;
+	public static int WorldChunkWidth = 5;
 	private Camera2D _Camera;
 	private Player _Player = null;
 	private Dictionary<int, Chunk> _RenderedChunks = new Dictionary<int, Chunk>();
