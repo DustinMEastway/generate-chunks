@@ -23,39 +23,57 @@ public class BlockId {
 	}
 }
 
-public class Chunk : Node2D {
-	public static Random Ran = new Random();
+public class Chunk : Area2D {
 	public static readonly int BlockHeight = 6;
 	public static readonly int BlockWidth = 6;
+	public static readonly Vector2 BlockSize = new Vector2(
+		Chunk.BlockWidth,
+		Chunk.BlockHeight
+	);
 	public static readonly int ChunkBlockHeight = 64;
 	public static readonly int ChunkBlockWidth = 64;
+	public static readonly Vector2 ChunkBlockSize = new Vector2(
+		Chunk.ChunkBlockWidth,
+		Chunk.ChunkBlockHeight
+	);
 	public static readonly int DefaultGroundLevel = 32;
-	public OpenSimplexNoise Noise = new OpenSimplexNoise();
-	public int Seed = Ran.Next();
+	public int ChunkId;
+	public bool IsReady { get; private set; } = false;
+	public int ChunkOffset;
+	[Signal]
+	public delegate void PlayerEntered(Player player, Chunk chunk);
 	public float Smoothness = 4;
 	public TileMap TileMap;
 	private BlockId _BlockId;
+	private int _GenerationOffset;
 
 	public override void _Ready() {
+		base._Ready();
 		TileMap = GetNode<TileMap>("TileMap");
+		var collisionShape = GetNode<CollisionShape2D>("CollisionShape");
+		var halfChunkSize = Chunk.ChunkBlockSize * Chunk.BlockSize / 2;
+		collisionShape.Position = halfChunkSize;
+		(collisionShape.Shape as RectangleShape2D).Extents = halfChunkSize;
 		_BlockId = new BlockId(TileMap);
-		_GenerateNoise();
-		_RenderBlocks();
+		_GenerationOffset = ChunkId * Chunk.ChunkBlockWidth;
+		IsReady = true;
+		RenderBlocks();
 	}
 
-	private void _GenerateNoise() {
-		Seed = Ran.Next();
-		Noise.Seed = Seed;
-		Noise.Octaves = 4;
-		Noise.Period = 20.0f;
-		Noise.Persistence = 0.8f;
+	public void _OnChunkBodyEntered(Node node) {
+		if (node is Player) {
+			EmitSignal(nameof(PlayerEntered), node, this);
+		}
 	}
 
-	private void _RenderBlocks() {
+	public void RenderBlocks() {
+		if (!IsReady) {
+			return;
+		}
+
+		TileMap.Clear();
 		for (var columnI = 0; columnI < Chunk.ChunkBlockWidth; columnI++) {
-			var groundLevel = Chunk.DefaultGroundLevel + Mathf.RoundToInt(
-				Noise.GetNoise2d((columnI / Smoothness), Seed) * Chunk.DefaultGroundLevel
-			);
+			var groundLevel = _GetGroundLevel(columnI);
 
 			for (var blockI = 0; blockI < groundLevel; blockI++) {
 				var x = columnI;
@@ -78,7 +96,10 @@ public class Chunk : Node2D {
 			return _BlockId.Grass;
 		}
 
-		var noise = Noise.GetNoise2d(columnI, blockI);
+		var noise = World.Noise.GetNoise2d(
+			_GenerationOffset + columnI,
+			blockI
+		);
 		if (noise < -0.1) {
 			return _BlockId.Stone;
 		}
@@ -86,14 +107,19 @@ public class Chunk : Node2D {
 		return _BlockId.Dirt;
 	}
 
-	public override void _UnhandledInput(InputEvent @event) {
-		base._UnhandledInput(@event);
-		if (@event is InputEventKey eventKey) {
-			if (eventKey.Pressed && eventKey.Scancode == (int)KeyList.Space) {
-				TileMap.Clear();
-				this._GenerateNoise();
-				this._RenderBlocks();
-			}
+	private int _GetGroundLevel(int columnI) {
+		var maxVariance = Chunk.DefaultGroundLevel;
+		if (ChunkId == 0 && columnI < maxVariance) {
+			maxVariance = columnI;
+		} else if (ChunkId == World.WorldChunkWidth - 1 && columnI > maxVariance) {
+			maxVariance = Chunk.ChunkBlockWidth - columnI;
 		}
+
+		return Chunk.DefaultGroundLevel + Mathf.RoundToInt(
+			World.Noise.GetNoise2d(
+				(_GenerationOffset + columnI) / Smoothness,
+				World.Seed
+			) * (float)maxVariance
+		);
 	}
 }
