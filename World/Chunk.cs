@@ -1,7 +1,6 @@
 using Godot;
-using System;
 
-public class BlockId {
+public partial class BlockId {
 	public int Dirt = -1;
 	public int Grass = -1;
 	public int Stone = -1;
@@ -15,15 +14,18 @@ public class BlockId {
 	}
 
 	private int _GetByName(TileMap tileMap, string name) {
-		int id = tileMap.TileSet.FindTileByName(name);
-		if (id == -1) {
-			throw new Exception($"TileMap does not contain tile with name '{name}'.");
+		switch (name) {
+			case "grass":
+				return 1;
+			case "stone":
+				return 2;
+			default:
+				return 0;
 		}
-		return id;
 	}
 }
 
-public class Chunk : Area2D {
+public partial class Chunk : Area2D {
 	public static readonly int BlockHeight = 6;
 	public static readonly int BlockWidth = 6;
 	public static readonly Vector2 BlockSize = new Vector2(
@@ -41,7 +43,7 @@ public class Chunk : Area2D {
 	public bool IsReady { get; private set; } = false;
 	public int ChunkOffset;
 	[Signal]
-	public delegate void PlayerEntered(Player player, Chunk chunk);
+	public delegate void PlayerEnteredEventHandler(Player player, Chunk chunk);
 	public float Smoothness = 4;
 	public TileMap TileMap;
 	private BlockId _BlockId;
@@ -50,10 +52,10 @@ public class Chunk : Area2D {
 	public override void _Ready() {
 		base._Ready();
 		TileMap = GetNode<TileMap>("TileMap");
-		var collisionShape = GetNode<CollisionShape2D>("CollisionShape");
+		var collisionShape = GetNode<CollisionShape2D>("CollisionShape2D");
 		var halfChunkSize = Chunk.ChunkBlockSize * Chunk.BlockSize / 2;
 		collisionShape.Position = halfChunkSize;
-		(collisionShape.Shape as RectangleShape2D).Extents = halfChunkSize;
+		(collisionShape.Shape as RectangleShape2D).Size = halfChunkSize;
 		_BlockId = new BlockId(TileMap);
 		_GenerationOffset = ChunkId * Chunk.ChunkBlockWidth;
 		IsReady = true;
@@ -79,9 +81,10 @@ public class Chunk : Area2D {
 				var x = columnI;
 				var y = Chunk.ChunkBlockHeight - blockI - 1;
 				TileMap.SetCell(
-					x,
-					y,
-					_GetCellId(columnI, blockI, groundLevel)
+					0,
+					new Vector2I(x, y),
+					_GetCellId(columnI, blockI, groundLevel),
+					new Vector2I(0, 0)
 				);
 			}
 		}
@@ -96,7 +99,7 @@ public class Chunk : Area2D {
 			return _BlockId.Grass;
 		}
 
-		var noise = World.Noise.GetNoise2d(
+		var noise = World.Noise.GetNoise2D(
 			_GenerationOffset + columnI,
 			blockI
 		);
@@ -116,7 +119,7 @@ public class Chunk : Area2D {
 		}
 
 		return Chunk.DefaultGroundLevel + Mathf.RoundToInt(
-			World.Noise.GetNoise2d(
+			World.Noise.GetNoise2D(
 				(_GenerationOffset + columnI) / Smoothness,
 				World.Seed
 			) * (float)maxVariance
